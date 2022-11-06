@@ -5,7 +5,6 @@ class spilInstans:
     """
     Spawner én instans af spillet
     """
-    
     def __init__(self, spillerantal, spiltype):
         """
         Startindstillinger til en spilinstans
@@ -17,6 +16,7 @@ class spilInstans:
         self.spiltype = spiltype
         self.point = {}
         self.lastMessage = ""
+        self.hvisTurErDet = ""
         self.kaninRetur = False
         self.antalKaninerMidte = self.kaniner
         self.turTæller = 0
@@ -38,8 +38,6 @@ class spilInstans:
         """
         Gennemkører én tur i spillet input er terningslag()
         """ 
-        print(f"Spiller {self.spiller} har slået '{farve}'")
-
         self.ekstraTur = False
 
         if farve == "kanin":
@@ -73,7 +71,7 @@ class spilInstans:
         elif self.huller[farve] == 0:
             if self.antalKaninerMidte >= 1:
                 self.huller[farve] = 1
-                self.lastMessage = (f"{farve} er fri, kanin er flyttet hertil")
+                self.lastMessage = (f"Det {farve} hul er frit, kanin er flyttet hertil")
             else:
                 self.lastMessage = (f"Der er ikke flere kaniner tilbage i midten - tur mistet - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
 
@@ -89,9 +87,9 @@ class spilInstans:
                 self.spiller += 1 
             else:
                 self.spiller = 1
-            print(f"\nDet er Spiller {self.spiller}s tur\n")
+            self.hvisTurErDet = (f"Det er Spiller {self.spiller}s tur til at slå!")
         else:
-            print(f"\nDet er Spiller {self.spiller}s tur igen\n")
+            self.hvisTurErDet = (f"Det er Spiller {self.spiller}s tur til at slå igen!")
 
         self.turTæller += 1
 
@@ -101,5 +99,3 @@ class spilInstans:
         Hvis to spillere har det samme pointantal returnerer den (desværre) den spiller med det laveste spillernummer
         """
         return(max(self.point, key=self.point.get))
-
-#TODO Lastmessage-funktion

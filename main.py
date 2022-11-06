@@ -8,12 +8,13 @@ from io import BytesIO
 from random import randint
 from time import sleep
 import spil
-
 matplotlib.use("TkAgg")
 
+# Højde og bredde i pixels af billederne der bruges som baggrund
 height = 800
 width = 800
 
+# Obligatorisk dark mode B)
 sg.theme('Dark') 
 
 def importBillede(billedsti):
@@ -37,21 +38,23 @@ def placerKanin(x,y):
 	return(newX, newY)
 
 def matematik(vindertabel, gennemløb, spiller):
+	"""
+	Omregner med hver turs vinder til en tabel med frekvensen for hvor ofte den givne spiller har vundet
+	Dette beregnes for hvert spillet spil og vi kommer derfor tættere og tættere på den sande sandsynlighed jo flere spil der gennemløbes
+	"""
 	frekvenstabel = []
 	
 	for i in range(1,int(gennemløb)):
 		tabel = vindertabel[:i]
 		vinderfrekvens = (tabel.count(spiller) / i ) * 100
 		frekvenstabel.append(vinderfrekvens)
-
 	return np.array(frekvenstabel)
 
-def lavGraf(gennemløb, spillerantal, maxY, ft1, ft2, ft3=None, ft4=None, ft5=None, ft6=None, ft7=None, ft8=None):
+def lavGraf(gennemløb, spillerantal, yMax, yMin, ft1, ft2, ft3=None, ft4=None, ft5=None, ft6=None, ft7=None, ft8=None):
 
 	x = np.linspace(0,int(gennemløb),len(ft1))
 		
 	fig, ax = plt.subplots()
-
 	ax.plot(x,ft1, label='Spiller 1')
 	ax.plot(x,ft2, label='Spiller 2')
 
@@ -68,7 +71,7 @@ def lavGraf(gennemløb, spillerantal, maxY, ft1, ft2, ft3=None, ft4=None, ft5=No
 	if spillerantal >= 8:
 		ax.plot(x,ft8, label='Spiller 8')
 	
-	plt.ylim(0,maxY)
+	plt.ylim(yMin,yMax)
 	plt.xlabel('Antal Spil')
 	plt.ylabel('Vinderfrekvens i %')
 	plt.legend()
@@ -87,7 +90,6 @@ def sletGraf(fig):
     """
     fig.get_tk_widget().forget()
     plt.close('all')
-
 
 # Spillets billeder indlæses
 billedeForside = importBillede('Kaninhop-forside.png')
@@ -121,7 +123,7 @@ layoutMenuEnkelt = [[sg.Text('Vælg dine indstillinger og tryk start for at komm
 
 					[sg.Button('Start spil!', key = '-knap-menuenkelt-start-', button_color=('white', 'green')),],]
 
-# Layout for menu til mange spil
+# Layout for menu til simulerede spil
 layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start for at komme i gang!')],
 					[sg.Text('Spiltype', font=('Helvetica', 15), justification='left')],
 					[sg.Radio('Hurtig', 'spiltype', key = '-spiltype-hurtig-', size=(12, 1)), sg.Radio('Normal', 'spiltype', key = '-spiltype-normal-', default=True, size=(12, 1)), sg.Radio('Langsom', 'spiltype', key = '-spiltype-langsom-', size=(12, 1)),],
@@ -131,8 +133,10 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 
 					[sg.Text('Antal Gennemspilninger', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((100,5000), 500, orientation = 'h', size=(45,20), resolution=100, key ='-antal-gennemspil-')],
-					[sg.Text('Grænseværdi y-akse (%)', font=('Helvetica', 15), justification='left')],
-					[sg.Slider((10,100), 50, orientation = 'h', enable_events = True, size=(45,20), key ='-maxY-')],
+					[sg.Text('Øvre grænseværdi for y-akse (yMax)', font=('Helvetica', 15), justification='left')],
+					[sg.Slider((10,100), 50, orientation = 'h', enable_events = True, size=(45,20), key ='-yMax-')],
+					[sg.Text('Nedre grænseværdi for y-akse (yMin)', font=('Helvetica', 15), justification='left')],
+					[sg.Slider((0,90), 10, orientation = 'h', enable_events = True, size=(45,20), key ='-yMin-')],					
 
 					[sg.Text('')],
 					[sg.Button('Simuler spil!', key = '-knap-menumange-start-', button_color=('white', 'green')),],
@@ -150,7 +154,8 @@ layoutSpilEnkelt = [
 					background_color = 'white',
 					key = '-graph-spilEnkelt-',
 					enable_events = True)],
-		[sg.Text('Slå med terningen for at komme igang!', key='-besked-spilenkelt-', font=('Helvetica', 15), justification='left')],]
+		[sg.Text('Slå med terningen for at komme igang!', key='-besked-spilenkelt-', font=('Helvetica', 12), justification='left')],
+		[sg.Text('Velkommen til spillet - Spiller 1 starter!', key='-besked-hvisTurErDet-', font=('Helvetica', 18, "bold"), justification='left')],]
 
 # Layout for scoreboard til enkelt spil
 layoutScoreboard = [[sg.Graph((height,width), graph_bottom_left= (0,0), 
@@ -158,8 +163,6 @@ layoutScoreboard = [[sg.Graph((height,width), graph_bottom_left= (0,0),
 			background_color = 'white',
 			key = '-graph-scoreboard-',
 			enable_events = True)],]
-
-		
 	
 def forside_Vindue():
 	"""
@@ -173,19 +176,16 @@ def forside_Vindue():
 
 	while forsideOpen == True:
 		event,values = forside.read()
-		print(event,values)
 
 		if event == '-graph-forside-':
 			pos = values['-graph-forside-']
 
 			if 65 < pos[0] < 350 and 50 < pos[1] < 130:
-				print("enkelt spil")
 				forsideOpen = False
 				forside.close()
 				menuEnkelt_Vindue()
     
 			if 450 < pos[0] < 735 and 50 < pos[1] < 130:
-				print("simuleret spil")
 				forsideOpen = False
 				forside.close()
 				menuMange_Vindue()
@@ -204,7 +204,6 @@ def menuEnkelt_Vindue():
 	
 	while menuEnkeltOpen == True:
 		event,values = menuEnkelt.read()
-		print(event,values)
 
 		# Sæt spiltype
 		if values['-spiltype-langsom-'] == True:
@@ -217,10 +216,7 @@ def menuEnkelt_Vindue():
 		# Sæt antal spillere
 		spillerantal = values['-antal-spillere-']
 
-
-
 		if event == '-knap-menuenkelt-start-':
-			print("start spil")
 			menuEnkelt.close()
 			spilEnkelt_Vindue(spiltype, spillerantal)
 
@@ -235,6 +231,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 	spilEnkelt = sg.Window('Enkelt Spil Menu', layout = layoutSpilEnkelt, finalize = True)
 	spilEnkeltOpen = True
 
+	# Spilinstans oprettes fra class
 	enkeltSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype)
 
 	kaninerMidte = []
@@ -246,7 +243,6 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 
 	slutBeskedFremme = False
 	
-
 	# Tegn 20 kaniner i midten
 	for i in range(enkeltSpil.kaniner):
 		if randint(1,5) == 5: 
@@ -258,14 +254,9 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 			kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=(380 + randint(-120,120), 520 + randint(-115,115)))
 			kaninType[kaninID] = "normal"
 			kaninerMidte.append(kaninID)
-
-
-	print("Spillerantal:",spillerantal)
-	print("Spiltype:",spiltype)
 	
 	while spilEnkeltOpen == True:
 		event,values = spilEnkelt.read()
-		print(event,values) # til debug
 		
 		enkeltSpil.kaninRetur = False
 
@@ -276,7 +267,6 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 			if 685 < pos[0] < 790 and 18 < pos[1] < 120 and slutBeskedFremme == False:
 				sleep(0.15)
 				for i in range(randint(10,18)): # Terningen slår et tilfældigt antal gange (mellem 10 og 18)
-					
 					farve = enkeltSpil.terningslag()
 
 					if farve == "blå":
@@ -298,14 +288,14 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 						spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedeTerningRød, location=(width - 115, 115))
 						spilEnkelt.refresh()
 					sleep(0.06)
-				print(f"Der er blevet slået {farve}!") # Den slåede farve er nu gemt i farve
 				### -----------------------------------------------
 
+				# Den nuværende tur bliver gennemkørt på baggrund af den slåede farve
 				enkeltSpil.tur(farve)
 				
 				### Placer kanin i bestemt hul -------------------- #Selverkendelse: Det er fjollet, at denne snippet og enkeltSpil.tur() begge regner på hvad der skal ske.
+				
 				# Flyt kanin til Blåt hul
-
 				if enkeltSpil.antalKaninerMidte >= 1:	
 					if enkeltSpil.huller["blå"] == 1 and kaninIHul["blå"] == "" and farve == "blå":
 						selectKanin = kaninerMidte[-1]
@@ -399,14 +389,19 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=(380 + randint(-120,120), 520 + randint(-115,115)))
 						kaninType[kaninID] = "normal"
 						kaninerMidte.append(kaninID)						
-
 				### -----------------------------------------------					
 
+		# Antal kaniner opdateres
 		enkeltSpil.antalKaninerMidte = len(kaninerMidte)
 
-		spilEnkelt['-besked-spilenkelt-'].update(enkeltSpil.lastMessage)
+		# Informationer skrives til GUI'en
+		spilEnkelt['-besked-spilenkelt-'].update(f"Sidste tur: {enkeltSpil.lastMessage}")
+		spilEnkelt['-besked-hvisTurErDet-'].update(enkeltSpil.hvisTurErDet)
 
+		print(f"Tur {enkeltSpil.turTæller} er færdig:")
+		print("")
 		print(f"Der er {enkeltSpil.antalKaninerMidte} kaniner tilbage i midten")
+		print(f"Der er {enkeltSpil.kaniner} kaniner tilbage på spillepladen")
 
 		# Hvis der ikke er flere kaniner tilbage stoppes spillet
 		if enkeltSpil.kaniner == 0:
@@ -585,13 +580,11 @@ def scoreboard_Vindue(spillerAntal, pointliste):
 
 	while scoreboardOpen == True:
 		event,values = scoreboard.read()
-		print(event,values)
 
 		if event == '-graph-scoreboard-':
 			pos = values['-graph-scoreboard-']
 
 			if 350 < pos[0] < 545 and 10 < pos[1] < 60:
-				print("afslut")
 				scoreboard.close()
 				scoreboardOpen = False
 				
@@ -609,7 +602,6 @@ def menuMange_Vindue():
 	
 	while menuMangeOpen == True:
 		event,values = menuMange.read()
-		print(event,values)
 
 		# Sæt spiltype
 		if values['-spiltype-langsom-'] == True:
@@ -627,7 +619,6 @@ def menuMange_Vindue():
 
 		# Start et spil
 		if event == '-knap-menumange-start-':
-			print("start spil")
 			startPressed = True
 
 
@@ -657,14 +648,21 @@ def menuMange_Vindue():
 			datap7 = matematik(vindertabel,gennemspilninger,7)
 			datap8 = matematik(vindertabel,gennemspilninger,8)
 
-			maxY = values['-maxY-']
-			grafdata = lavGraf(gennemspilninger,spillerantal,maxY,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			yMax = values['-yMax-']
+			yMin = values['-yMin-']
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)
 		
-		# Hvis grafen er lavet opdateres grafen med det samme når maxY rettes
-		if event == '-maxY-' and startPressed == True:
+		# Hvis grafen er lavet opdateres grafen med det samme når yMax eller yMin rettes
+		if event == '-yMax-' and startPressed == True:
 			sletGraf(guiFigur)
-			grafdata = lavGraf(gennemspilninger,spillerantal,maxY,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			yMax = values['-yMax-']
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)
+		if event == '-yMin-' and startPressed == True:
+			sletGraf(guiFigur)
+			yMin = values['-yMin-']
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)		
 
 		if event == sg.WIN_CLOSED:
