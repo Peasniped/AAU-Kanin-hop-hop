@@ -1,4 +1,4 @@
-# kaninhophop
+# Kanin Hop Hop i Python
 Mit produkt til programmeringsworkshop med at lave brætspillet 'Kanin Hop Hop'
 
 Grafik er tilpasset fra det originale grafik fra brætspillet (spilleplade, kasse, manual)
