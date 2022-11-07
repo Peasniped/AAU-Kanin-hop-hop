@@ -1,5 +1,5 @@
 # 'Kanin Hop Hop' i Python
-Mit produkt til programmeringsworkshop med at lave brætspillet 'Kanin Hop Hop'
+Mit produkt til programmeringsworkshop med at lave brætspillet 'Kanin Hop Hop'  
 Beklager rodet, men jeg kunne ikke få relative stier til at virke, så billederne kunne åbnes. 
 
 Spillet køres ved at køre main.py
