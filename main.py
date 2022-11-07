@@ -19,19 +19,6 @@ from time import sleep
 import spil
 matplotlib.use("TkAgg")
 
-# TODO-Liste: -------------------------------------------------------
-#
-# FIXME BUG: Progressbar virker ikke rigtigt. Hvis man simulerer 100k spil så bliver progress bar færdig alt for hurtig.
-#	^ Det er fordi at matematikken ikke er med i progressbar, kun gennemløb af spillene - der skal gøres så progress bar mangler måske 10%, når den er færdig med at gennemløbe spillene ^
-#
-# TODO Feature: Slider til at vælge antal af kaniner
-# TODO Feature: Der skal laves en besked i slutningen af enkeltSpil, hvor der står noget a la: "Det er en tragisk dag, hvor vi siger farvel til de {døde} modige kaniner som ikke blev reddet op af ingangshullerne."
-# TODO Feature: Oprettelse af skaleringsvariabel som bare ligger i toppen som (global) variabel.
-# TODO Feature: Der skal stå på scorebord hvem der har vundet. Hvis flere spillere har samme point skal alle navne stå der.
-#				Der kan evt laves en funktion erVinder(spiller) som ser om spilleren har flest point eller har samme antal point som den med flest point. Return er fx farven som spillerens navn skrives med på scoreboard. 
-#
-# -------------------------------------------------------------------
-
 # Højde og bredde i pixels af billederne der bruges som baggrund
 height = 800
 width = 800
@@ -59,16 +46,20 @@ def placerKanin(x,y):
 	newY = y + imgHeight
 	return(newX, newY)
 
-def matematik(vindertabel, gennemløb, spiller):
+def matematik(vindertabel, antalGennemløb, spiller):
 	"""
-	Omregner med hver turs vinder til en tabel med frekvensen for hvor ofte den givne spiller har vundet
+	Omregner hver turs vinder til en tabel med frekvensen for hvor ofte den givne spiller har vundet
 	Dette beregnes for hvert spillet spil og vi kommer derfor tættere og tættere på den sande sandsynlighed jo flere spil der gennemløbes
 	"""
 	frekvenstabel = []
-	
-	for i in range(1,int(gennemløb)):
-		tabel = vindertabel[:i]
-		vinderfrekvens = (tabel.count(spiller) / i ) * 100
+	count = 0
+
+	for i in range(1,int(antalGennemløb)):
+		tabel = vindertabel[:i]    
+		for each in vindertabel[i]:
+			if each in [spiller]:
+				count += 1
+		vinderfrekvens = (count / i ) * 100
 		frekvenstabel.append(vinderfrekvens)
 	return np.array(frekvenstabel)
 
@@ -113,6 +104,16 @@ def sletGraf(fig):
     fig.get_tk_widget().forget()
     plt.close('all')
 
+def vinderFarve(vinderliste, spiller):
+	"""
+	Kigger om den givne spiller er at finde i en given vinderliste.
+	Hvis ja returneres farven grøn, ellers returneres None(standardfarve)
+	"""
+	if spiller in vinderliste:
+		return "green"
+	else:
+		return(None)
+
 # Spillets billeder indlæses
 billedeForside = importBillede('Kaninhop-forside.png')
 billedeSpilleplade = importBillede('Kaninhop-spilleplade.png')
@@ -126,6 +127,7 @@ billedeTerningKanin = importBillede('terning-kanin.png')
 billedeTerningLilla = importBillede('terning-lilla.png')
 billedeTerningRød = importBillede('terning-rød.png')
 billedeSlutBesked = importBillede('slutbesked.png')
+billedeSorgBesked = importBillede('sorg-besked.png')
 billedePodium = importBillede('podium.png')
 
 # Forsidevinduets layout
@@ -143,6 +145,9 @@ layoutMenuEnkelt = [[sg.Text('Vælg dine indstillinger og tryk start for at komm
 					[sg.Text('Antal Spillere', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((2,8), 4, orientation = 'h', size=(45,20), key ='-antal-spillere-')],
 
+					[sg.Text('Antal Kaniner', font=('Helvetica', 15), justification='left')],
+					[sg.Slider((1,30), 20, orientation = 'h', size=(45,20), key ='-antal-kaniner-')],					
+
 					[sg.Button('Start spil!', key = '-knap-menuenkelt-start-', button_color=('white', 'green')),],]
 
 # Layout for menu til simulerede spil
@@ -150,8 +155,11 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 					[sg.Text('Spiltype', font=('Helvetica', 15), justification='left')],
 					[sg.Radio('Hurtig', 'spiltype', key = '-spiltype-hurtig-', size=(12, 1)), sg.Radio('Normal', 'spiltype', key = '-spiltype-normal-', default=True, size=(12, 1)), sg.Radio('Langsom', 'spiltype', key = '-spiltype-langsom-', size=(12, 1)),],
 			  
-					[sg.Text('Antal Spillere', font=('Helvetica', 15), justification='left')],
+					[sg.Text('Antal Spillere (p)', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((2,8), 4, orientation = 'h', size=(45,20), key ='-antal-spillere-')],
+
+					[sg.Text('Antal Kaniner', font=('Helvetica', 15), justification='left')],
+					[sg.Slider((1,30), 20, orientation = 'h', size=(45,20), key ='-antal-kaniner-')],
 
 					[sg.Text('Antal Gennemspilninger (n)', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((100,10000), 1000, orientation = 'h', size=(45,20), resolution=100, key ='-antal-gennemspil-')],
@@ -163,7 +171,7 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 					[sg.Text('')],
 					[sg.Button('Simuler spil!', key = '-knap-menumange-start-', button_color=('white', 'green')),],
 					[sg.ProgressBar(100, orientation = 'h', key = '-progress-bar-', size=(37,20), bar_color = ("green", "grey")),],
-					[sg.Text('Vindersandsynlighed ved n spil:', font=('Helvetica', 12, "bold"), justification='left')],
+					[sg.Text('Vinderfrekvens ved (n) spil:', key ='-overskrift-vindsans-', font=('Helvetica', 12, "bold"), justification='left')],
 					[sg.Text('', key='-besked-vindsans-', font=('Helvetica', 10, "bold"), justification='left')],]
 layoutMenuMangeGraf = [[sg.Canvas(key = '-graf-')],]
 
@@ -241,16 +249,19 @@ def menuEnkelt_Vindue():
 		# Sæt antal spillere
 		spillerantal = values['-antal-spillere-']
 
+		# Sæt antal kaniner 
+		kaninAntal = values['-antal-kaniner-']
+
 		if event == '-knap-menuenkelt-start-':
 			menuEnkelt.close()
-			spilEnkelt_Vindue(spiltype, spillerantal)
+			spilEnkelt_Vindue(spiltype, spillerantal, kaninAntal)
 			menuEnkeltOpen = False
 
 		if event == sg.WIN_CLOSED:
 			menuEnkeltOpen = False
 	menuEnkelt.close()        
 
-def spilEnkelt_Vindue(spiltype, spillerantal):
+def spilEnkelt_Vindue(spiltype, spillerantal, kaninAntal):
 	"""
 	Danner vindue og kører events for spilvinduet til enkeltspil
 	"""	
@@ -258,7 +269,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 	spilEnkeltOpen = True
 
 	# Spilinstans oprettes fra class
-	enkeltSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype)
+	enkeltSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype, kaninAntal=kaninAntal)
 
 	kaninerMidte = []
 	kaninType = {}
@@ -268,6 +279,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 	spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedeTerningSlå, location=(width - 115, 115))
 
 	slutBeskedFremme = False
+	sorgeBeskedÅben = False
 	
 	# Tegn 20 kaniner i midten
 	for i in range(enkeltSpil.kaniner):
@@ -283,6 +295,8 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 	
 	while spilEnkeltOpen == True:
 		event,values = spilEnkelt.read()
+
+		print(event,values)
 		
 		enkeltSpil.kaninRetur = False
 
@@ -317,7 +331,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 				### -----------------------------------------------
 
 				# Den nuværende tur bliver gennemkørt med den slåede farve
-				sleep(0.5)
+				sleep(0.3)
 				enkeltSpil.tur(farve)
 				
 				### Placer kanin i bestemt hul -------------------- #Selverkendelse: Det er fjollet, at denne snippet og enkeltSpil.tur() begge regner på hvad der skal ske.
@@ -411,15 +425,12 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 						kaninerMidte.append(kaninID)						
 				### -----------------------------------------------					
 
-		# Antal kaniner opdateres
-		#enkeltSpil.antalKaninerMidte = len(kaninerMidte)
-
 		# Informationer skrives til GUI'en
 		spilEnkelt['-besked-spilenkelt-'].update(f"Sidste tur: {enkeltSpil.lastMessage}")
 		spilEnkelt['-besked-hvisTurErDet-'].update(enkeltSpil.hvisTurErDet)
 
-		print(f"Tur {enkeltSpil.turTæller} er færdig:")
 		print("")
+		print(f"Tur {enkeltSpil.turTæller} er færdig:\n")
 		print(f"Der er {enkeltSpil.antalKaninerMidte} kaniner tilbage i midten")
 		print(f"Der er {enkeltSpil.kaniner} kaniner tilbage på spillepladen")
 
@@ -427,7 +438,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 		if enkeltSpil.antalKaninerMidte == 0:
 			
 			spilEnkelt['-besked-hvisTurErDet-'].update("Alle kaniner er ude af midten - Spillet er nu slut")
-			sleep(1)
+			
 
 			# Slutbesked kommer op
 			if slutBeskedFremme == False:
@@ -435,15 +446,28 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 				slutBeskedFremme = True
 			# Tryk på knappen "Til Scoreboard!"
 			if 310 < pos[0] < 490 and 350 < pos[1] < 390:
+				# Vi mindes de forladte kaniner
+				if enkeltSpil.kaniner > 0 and sorgeBeskedÅben == False:
+					spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedeSorgBesked, location=(width/2 - 600/2 ,height/2 + 175/2))
+					spilEnkelt['-graph-spilEnkelt-'].draw_text(text=int(enkeltSpil.kaniner), font=('Helvetica', 15, 'bold'),color = "black", location=(width/2 + 6, height/2 + 22.5))
+					spilEnkelt['-graph-spilEnkelt-'].draw_text(text=int(enkeltSpil.kaniner), font=('Helvetica', 15, 'bold'),color = "white", location=(width/2 + 3, height/2 + 25))
+					spilEnkelt.refresh()
+					sorgeBeskedÅben = True
+				elif enkeltSpil.kaniner == 0:
+					spilEnkelt.close()
+					scoreboard_Vindue(spillerantal, enkeltSpil.getPoint(), enkeltSpil.getVinder())
+					spilEnkeltOpen = False
+
+			if 330 < pos[0] < 470 and 325 < pos[1] < 360 and sorgeBeskedÅben == True:
 				spilEnkelt.close()
-				scoreboard_Vindue(spillerantal, enkeltSpil.getPoint())
+				scoreboard_Vindue(spillerantal, enkeltSpil.getPoint(), enkeltSpil.getVinder())
 				spilEnkeltOpen = False
 
 		if event == sg.WIN_CLOSED:
 			spilEnkeltOpen = False
 	spilEnkelt.close()  
 
-def scoreboard_Vindue(spillerAntal, pointliste):
+def scoreboard_Vindue(spillerAntal, pointliste, vinderliste):
 	"""
 	Denne funktion danner et vindue og tegner et scoreboard.
 
@@ -479,127 +503,127 @@ def scoreboard_Vindue(spillerAntal, pointliste):
 		colL1 = 1 * width/4
 		colL2 = 2 * width/4
 		colL3 = 3 * width/4
-
+	
 	scoreboard['-graph-scoreboard-'].draw_image(data=billedePodium, location=(0,height))
 
 	# Scorebord 2 spillere
 	if spillerAntal == 2: 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'), location=(col1, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15), location=(col1, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,1), location=(col1, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'), location=(col2, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15), location=(col2, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,2), location=(col2, 100))
 
 	# Scorebord 3 spillere
 	if spillerAntal == 3:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'), location=(col1, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15), location=(col1, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,1), location=(col1, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'), location=(col2, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15), location=(col2, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,2), location=(col2, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 20, 'bold'), location=(col3, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 15), location=(col3, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,3), location=(col3, 100))
 
 	# Scorebord 4 spillere
 	if spillerAntal == 4:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'), location=(col1, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15), location=(col1, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,1), location=(col1, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'), location=(col2, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15), location=(col2, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,2), location=(col2, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 20, 'bold'), location=(col3, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 15), location=(col3, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,3), location=(col3, 100))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 20, 'bold'), location=(col4, 130))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 15), location=(col4, 100))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 20, 'bold'),color = vinderFarve(vinderliste,4), location=(col4, 130))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 15),color = vinderFarve(vinderliste,4), location=(col4, 100))
 
 	# Scorebord 5 spillere
 	if spillerAntal == 5:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'), location=(col1, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12), location=(col1, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,1), location=(col1, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'), location=(col2, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12), location=(col2, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,2), location=(col2, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'), location=(col3, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12), location=(col3, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,3), location=(col3, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'), location=(col4, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12), location=(col4, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,4), location=(col4, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,4), location=(col4, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'), location=(colCenter, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12), location=(colCenter, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,5), location=(colCenter, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,5), location=(colCenter, 85))
 
 	# Scorebord 6 spillere
 	if spillerAntal == 6:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'), location=(col1, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12), location=(col1, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,1), location=(col1, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'), location=(col2, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12), location=(col2, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,2), location=(col2, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'), location=(col3, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12), location=(col3, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,3), location=(col3, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'), location=(col1, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12), location=(col1, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,4), location=(col1, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,4), location=(col1, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'), location=(col2, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12), location=(col2, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,5), location=(col2, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,5), location=(col2, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'), location=(col3, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12), location=(col3, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,6), location=(col3, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,6), location=(col3, 85))
 	
 	# Scorebord 7 spillere
 	if spillerAntal == 7:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'), location=(col1, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12), location=(col1, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,1), location=(col1, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'), location=(col2, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12), location=(col2, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,2), location=(col2, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'), location=(col3, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12), location=(col3, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,3), location=(col3, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'), location=(col4, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12), location=(col4, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,4), location=(col4, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,4), location=(col4, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'), location=(colL1, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12), location=(colL1, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,5), location=(colL1, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,5), location=(colL1, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'), location=(colL2, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12), location=(colL2, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,6), location=(colL2, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,6), location=(colL2, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 7", font=('Helvetica', 17, 'bold'), location=(colL3, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[6]}", font=('Helvetica', 12), location=(colL3, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 7", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,7), location=(colL3, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[6]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,7), location=(colL3, 85))
 
 	# Scorebord 8 spillere
 	if spillerAntal == 8:
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'), location=(col1, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12), location=(col1, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 1", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,1), location=(col1, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[0]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,1), location=(col1, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'), location=(col2, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12), location=(col2, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 2", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,2), location=(col2, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[1]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,2), location=(col2, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'), location=(col3, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12), location=(col3, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 3", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,3), location=(col3, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[2]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,3), location=(col3, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'), location=(col4, 165))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12), location=(col4, 140))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 4", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,4), location=(col4, 165))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[3]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,4), location=(col4, 140))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'), location=(col1, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12), location=(col1, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 5", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,5), location=(col1, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[4]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,5), location=(col1, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'), location=(col2, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12), location=(col2, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 6", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,6), location=(col2, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[5]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,6), location=(col2, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 7", font=('Helvetica', 17, 'bold'), location=(col3, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[6]}", font=('Helvetica', 12), location=(col3, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 7", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,7), location=(col3, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[6]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,7), location=(col3, 85))
 
-		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 8", font=('Helvetica', 17, 'bold'), location=(col4, 110))
-		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[7]}", font=('Helvetica', 12), location=(col4, 85))
+		scoreboard['-graph-scoreboard-'].draw_text(text="Spiller 8", font=('Helvetica', 17, 'bold'),color = vinderFarve(vinderliste,8), location=(col4, 110))
+		scoreboard['-graph-scoreboard-'].draw_text(text=f"Point: {pointliste[7]}", font=('Helvetica', 12),color = vinderFarve(vinderliste,8), location=(col4, 85))
 
 	while scoreboardOpen == True:
 		event,values = scoreboard.read()
@@ -638,6 +662,9 @@ def menuMange_Vindue():
 		# Sæt antal spillere
 		spillerantal = values['-antal-spillere-']
 
+		# Sæt antal kaniner 
+		kaninAntal = values['-antal-kaniner-']		
+
 		# Sæt antal gennemspilninger
 		gennemspilninger = values['-antal-gennemspil-']
 
@@ -650,64 +677,90 @@ def menuMange_Vindue():
 				sletGraf(guiFigur)
 
 			# Opretter spilinstans fra class
-			mangeSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype)
+			mangeSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype, kaninAntal=kaninAntal)
 
 			# Konfiguration af progress-bar
 			menuMange['-progress-bar-'].update(max = gennemspilninger)
 
 			# Oprettelse af lister
-			pointtabel = []
 			vindertabel = []
+			progress = 0
 
 			# Gennemløb af spillet
 			for i in range(int(gennemspilninger)):
 				# Spillets attributes nulstilles til default før hvert spil
 				mangeSpil.__init__(mangeSpil.spillerantal, mangeSpil.spiltype)
 				# Der køres spilture med terningslag() indtil at der ikke er flere kaniner i midten
-				while mangeSpil.kaniner >= 1:
+				while mangeSpil.antalKaninerMidte >= 1:
 					mangeSpil.tur(mangeSpil.terningslag())
-				vindertabel.append(mangeSpil.getVinder())
-				menuMange['-progress-bar-'].update("simulerer spil", current_count = ((i + 1) / gennemspilninger) * 100)
+				# Vinderen af hvert spil tilføjes til listen vindertabel
+				vindere = mangeSpil.getVinder()
+				vindertabel.append(vindere)
+				progress = ((i + 1) / gennemspilninger) * 90
+				menuMange['-progress-bar-'].update(current_count = progress)
 
-			datap1 = matematik(vindertabel,gennemspilninger,1)
-			datap2 = matematik(vindertabel,gennemspilninger,2)
-			datap3 = matematik(vindertabel,gennemspilninger,3)
-			datap4 = matematik(vindertabel,gennemspilninger,4)
-			datap5 = matematik(vindertabel,gennemspilninger,5)
-			datap6 = matematik(vindertabel,gennemspilninger,6)
-			datap7 = matematik(vindertabel,gennemspilninger,7)
-			datap8 = matematik(vindertabel,gennemspilninger,8)
+
+			# Beregning graf for hver spiller. Efter hver beregning får progress bar +1%
+			dataP1 = matematik(vindertabel,gennemspilninger,1)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP2 = matematik(vindertabel,gennemspilninger,2)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP3 = matematik(vindertabel,gennemspilninger,3)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP4 = matematik(vindertabel,gennemspilninger,4)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP5 = matematik(vindertabel,gennemspilninger,5)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP6 = matematik(vindertabel,gennemspilninger,6)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP7 = matematik(vindertabel,gennemspilninger,7)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
+			dataP8 = matematik(vindertabel,gennemspilninger,8)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
 
 			yMax = values['-yMax-']
 			yMin = values['-yMin-']
-			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,dataP1,dataP2,dataP3,dataP4,dataP5,dataP6,dataP7,dataP8)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)
+			progress += 1
+			menuMange['-progress-bar-'].update(current_count = progress)
 
 			# Vindersandsynlighed:
-			datapxs = [datap1, datap2, datap3, datap4, datap5, datap6, datap7, datap8]
+			dataPxs = [dataP1, dataP2, dataP3, dataP4, dataP5, dataP6, dataP7, dataP8]
 			vindsans = []
 			vindsansStrs = []
 
-			for datapx in datapxs:
-				if datapx[-1] > 0:
-					vindsan = datapx[-1]
+			for dataPx in dataPxs:
+				if dataPx[-1] > 0:
+					vindsan = dataPx[-1]
 					vindsans.append(vindsan.round(2))
 			for i in range(len(vindsans)):
 				vindsansStr = (f"Spiller {i+1}: " + str(vindsans[i]) + "%")
 				vindsansStrs.append(vindsansStr)
 
+			menuMange['-overskrift-vindsans-'].update(f'Vinderfrekvens ved {round(gennemspilninger)} spil:')
 			menuMange['-besked-vindsans-'].update(vindsansStrs)
 		
 		# Hvis grafen er lavet opdateres grafen med det samme når yMax eller yMin rettes
 		if event == '-yMax-' and startPressed == True:
 			sletGraf(guiFigur)
 			yMax = values['-yMax-']
-			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,dataP1,dataP2,dataP3,dataP4,dataP5,dataP6,dataP7,dataP8)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)
 		if event == '-yMin-' and startPressed == True:
 			sletGraf(guiFigur)
 			yMin = values['-yMin-']
-			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
+			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,dataP1,dataP2,dataP3,dataP4,dataP5,dataP6,dataP7,dataP8)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)		
 
 		if event == sg.WIN_CLOSED:
