@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+'Kanin Hop Hop'-brætspil - main.py
+@author: Morten Zink Stage
+https://github.com/Peasniped/Kanin-hop-hop
+
+Created on Mon Nov 4 2022
+"""
+
 import PySimpleGUI as sg
 import matplotlib 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -9,6 +18,19 @@ from random import randint
 from time import sleep
 import spil
 matplotlib.use("TkAgg")
+
+# TODO-Liste: -------------------------------------------------------
+#
+# FIXME BUG: Progressbar virker ikke rigtigt. Hvis man simulerer 100k spil så bliver progress bar færdig alt for hurtig.
+#	^ Det er fordi at matematikken ikke er med i progressbar, kun gennemløb af spillene - der skal gøres så progress bar mangler måske 10%, når den er færdig med at gennemløbe spillene ^
+#
+# TODO Feature: Slider til at vælge antal af kaniner
+# TODO Feature: Der skal laves en besked i slutningen af enkeltSpil, hvor der står noget a la: "Det er en tragisk dag, hvor vi siger farvel til de {døde} modige kaniner som ikke blev reddet op af ingangshullerne."
+# TODO Feature: Oprettelse af skaleringsvariabel som bare ligger i toppen som (global) variabel.
+# TODO Feature: Der skal stå på scorebord hvem der har vundet. Hvis flere spillere har samme point skal alle navne stå der.
+#				Der kan evt laves en funktion erVinder(spiller) som ser om spilleren har flest point eller har samme antal point som den med flest point. Return er fx farven som spillerens navn skrives med på scoreboard. 
+#
+# -------------------------------------------------------------------
 
 # Højde og bredde i pixels af billederne der bruges som baggrund
 height = 800
@@ -132,7 +154,7 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 					[sg.Slider((2,8), 4, orientation = 'h', size=(45,20), key ='-antal-spillere-')],
 
 					[sg.Text('Antal Gennemspilninger (n)', font=('Helvetica', 15), justification='left')],
-					[sg.Slider((100,5000), 500, orientation = 'h', size=(45,20), resolution=100, key ='-antal-gennemspil-')],
+					[sg.Slider((100,10000), 1000, orientation = 'h', size=(45,20), resolution=100, key ='-antal-gennemspil-')],
 					[sg.Text('Øvre grænseværdi for y-akse (yMax)', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((10,100), 50, orientation = 'h', enable_events = True, size=(45,20), key ='-yMax-')],
 					[sg.Text('Nedre grænseværdi for y-akse (yMin)', font=('Helvetica', 15), justification='left')],
@@ -222,6 +244,7 @@ def menuEnkelt_Vindue():
 		if event == '-knap-menuenkelt-start-':
 			menuEnkelt.close()
 			spilEnkelt_Vindue(spiltype, spillerantal)
+			menuEnkeltOpen = False
 
 		if event == sg.WIN_CLOSED:
 			menuEnkeltOpen = False
@@ -293,94 +316,88 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 					sleep(0.06)
 				### -----------------------------------------------
 
-				# Den nuværende tur bliver gennemkørt på baggrund af den slåede farve
+				# Den nuværende tur bliver gennemkørt med den slåede farve
+				sleep(0.5)
 				enkeltSpil.tur(farve)
 				
 				### Placer kanin i bestemt hul -------------------- #Selverkendelse: Det er fjollet, at denne snippet og enkeltSpil.tur() begge regner på hvad der skal ske.
 				
-				# Flyt kanin til Blåt hul
-				if enkeltSpil.antalKaninerMidte >= 1:	
-					if enkeltSpil.huller["blå"] == 1 and kaninIHul["blå"] == "" and farve == "blå":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
+				# Flyt kanin til Blåt hul	
+				if enkeltSpil.huller["blå"] == 1 and kaninIHul["blå"] == "" and farve == "blå":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
 
-						if kaninType[selectKanin] == "lenny": 
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(300, 132))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						else:
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(300, 132))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						kaninIHul["blå"] = kaninID
-
-					# Flyt kanin til Grønt hul
-					elif enkeltSpil.huller["grøn"] == 1 and kaninIHul["grøn"] == "" and farve == "grøn":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
-
-						if kaninType[selectKanin] == "lenny": 
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(627, 182))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						else:
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(627, 182))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						kaninIHul["grøn"] = kaninID
-
-					# Flyt kanin til Gult hul
-					elif enkeltSpil.huller["gul"] == 1 and kaninIHul["gul"] == "" and farve == "gul":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
-
-						if kaninType[selectKanin] == "lenny": 
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(330, 606))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						else:
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(330, 606))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						kaninIHul["gul"] = kaninID			
-
-					# Flyt kanin til Lilla hul
-					elif enkeltSpil.huller["lilla"] == 1 and kaninIHul["lilla"] == "" and farve == "lilla":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
-
-						if kaninType[selectKanin] == "lenny": 
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(161, 340))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						else:
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(161, 340))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						kaninIHul["lilla"] = kaninID
-
-					# Flyt kanin til Rødt hul
-					elif enkeltSpil.huller["rød"] == 1 and kaninIHul["rød"] == "" and farve == "rød":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
-
-						if kaninType[selectKanin] == "lenny": 
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(635, 562))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						else:
-							kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(635, 562))
-							spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-						kaninIHul["rød"] = kaninID
-
-					# Flyt kanin ud af hul
-					elif farve != "kanin" and enkeltSpil.huller[farve] == 0 and kaninIHul[farve] != "":
-						selectKanin = kaninIHul[farve]
-						kaninIHul[farve] = ""
+					if kaninType[selectKanin] == "lenny": 
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(300, 132))
 						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
-					
-					# Flyt kanin ud af midte (der er slået kanin med spiltype = hurtig eller normal)
-					elif enkeltSpil.spiltype == "hurtig" or enkeltSpil.spiltype == "normal":
-						selectKanin = kaninerMidte[-1]
-						kaninerMidte.remove(selectKanin)
-						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)	
+					else:
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(300, 132))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					kaninIHul["blå"] = kaninID
 
-				# Flyt kanin ud af hul når der ikke er flere i midten
-				elif farve != "kanin" and enkeltSpil.huller[farve] == 0  and kaninIHul[farve] != "":
+				# Flyt kanin til Grønt hul
+				elif enkeltSpil.huller["grøn"] == 1 and kaninIHul["grøn"] == "" and farve == "grøn":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
+
+					if kaninType[selectKanin] == "lenny": 
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(627, 182))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					else:
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(627, 182))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					kaninIHul["grøn"] = kaninID
+
+				# Flyt kanin til Gult hul
+				elif enkeltSpil.huller["gul"] == 1 and kaninIHul["gul"] == "" and farve == "gul":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
+
+					if kaninType[selectKanin] == "lenny": 
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(330, 606))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					else:
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(330, 606))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					kaninIHul["gul"] = kaninID			
+
+				# Flyt kanin til Lilla hul
+				elif enkeltSpil.huller["lilla"] == 1 and kaninIHul["lilla"] == "" and farve == "lilla":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
+
+					if kaninType[selectKanin] == "lenny": 
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(161, 340))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					else:
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(161, 340))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					kaninIHul["lilla"] = kaninID
+
+				# Flyt kanin til Rødt hul
+				elif enkeltSpil.huller["rød"] == 1 and kaninIHul["rød"] == "" and farve == "rød":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
+
+					if kaninType[selectKanin] == "lenny": 
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin2, location=placerKanin(635, 562))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					else:
+						kaninID = spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedekanin, location=placerKanin(635, 562))
+						spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+					kaninIHul["rød"] = kaninID
+
+				# Flyt kanin ud af hul
+				elif farve != "kanin" and enkeltSpil.huller[farve] == 0 and kaninIHul[farve] != "":
 					selectKanin = kaninIHul[farve]
 					kaninIHul[farve] = ""
-					spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)		
+					spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)
+				
+				# Flyt kanin ud af midte (der er slået kanin med spiltype = hurtig eller normal)
+				elif enkeltSpil.spiltype == "hurtig" or enkeltSpil.spiltype == "normal":
+					selectKanin = kaninerMidte[-1]
+					kaninerMidte.remove(selectKanin)
+					spilEnkelt['-graph-spilEnkelt-'].delete_figure(selectKanin)	
 
 				if enkeltSpil.kaninRetur == True:
 					if randint(1,5) == 5: 
@@ -395,7 +412,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 				### -----------------------------------------------					
 
 		# Antal kaniner opdateres
-		enkeltSpil.antalKaninerMidte = len(kaninerMidte)
+		#enkeltSpil.antalKaninerMidte = len(kaninerMidte)
 
 		# Informationer skrives til GUI'en
 		spilEnkelt['-besked-spilenkelt-'].update(f"Sidste tur: {enkeltSpil.lastMessage}")
@@ -407,8 +424,11 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 		print(f"Der er {enkeltSpil.kaniner} kaniner tilbage på spillepladen")
 
 		# Hvis der ikke er flere kaniner tilbage stoppes spillet
-		if enkeltSpil.kaniner == 0:
+		if enkeltSpil.antalKaninerMidte == 0:
 			
+			spilEnkelt['-besked-hvisTurErDet-'].update("Alle kaniner er ude af midten - Spillet er nu slut")
+			sleep(1)
+
 			# Slutbesked kommer op
 			if slutBeskedFremme == False:
 				spilEnkelt['-graph-spilEnkelt-'].draw_image(data=billedeSlutBesked, location=(0,height))
@@ -593,6 +613,7 @@ def scoreboard_Vindue(spillerAntal, pointliste):
 				
 		if event == sg.WIN_CLOSED:
 			scoreboardOpen = False
+	scoreboard.close()
 
 def menuMange_Vindue():
 	"""
@@ -624,23 +645,29 @@ def menuMange_Vindue():
 		if event == '-knap-menumange-start-':
 			startPressed = True
 
-
+			# Hvis der allerede er tegnet en graf slettes den først
 			if guiFigur != None:
 				sletGraf(guiFigur)
 
+			# Opretter spilinstans fra class
 			mangeSpil = spil.spilInstans(spillerantal=spillerantal, spiltype=spiltype)
 
+			# Konfiguration af progress-bar
 			menuMange['-progress-bar-'].update(max = gennemspilninger)
 
+			# Oprettelse af lister
 			pointtabel = []
 			vindertabel = []
 
+			# Gennemløb af spillet
 			for i in range(int(gennemspilninger)):
+				# Spillets attributes nulstilles til default før hvert spil
 				mangeSpil.__init__(mangeSpil.spillerantal, mangeSpil.spiltype)
+				# Der køres spilture med terningslag() indtil at der ikke er flere kaniner i midten
 				while mangeSpil.kaniner >= 1:
 					mangeSpil.tur(mangeSpil.terningslag())
 				vindertabel.append(mangeSpil.getVinder())
-				menuMange['-progress-bar-'].update(current_count = ((i + 1) / gennemspilninger) * 100)
+				menuMange['-progress-bar-'].update("simulerer spil", current_count = ((i + 1) / gennemspilninger) * 100)
 
 			datap1 = matematik(vindertabel,gennemspilninger,1)
 			datap2 = matematik(vindertabel,gennemspilninger,2)

@@ -1,4 +1,12 @@
-# her skal der være en class
+# -*- coding: utf-8 -*-
+"""
+'Kanin Hop Hop'-brætspil - spil.py
+@author: Morten Zink Stage
+https://github.com/Peasniped/Kanin-hop-hop
+
+Created on Mon Nov 4 2022
+"""
+
 from random import randint
 
 class spilInstans:
@@ -9,7 +17,7 @@ class spilInstans:
         """
         Startindstillinger til en spilinstans
         """
-        self.kaniner = 8 # Hvor mange kaniner der skal være på spillepladen til at starte med
+        self.kaniner = 5 # Hvor mange kaniner der skal være på spillepladen til at starte med
         self.huller = {"rød":0, "gul":0, "grøn":0, "blå":0, "lilla":0}
         self.spiller = 1
         self.spillerantal = int(spillerantal)
@@ -46,8 +54,7 @@ class spilInstans:
                     self.point[self.spiller] += 1
                     self.kaniner -= 1
                     self.lastMessage = (f"Spiller {self.spiller} har reddet en kanin: +1 point - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
-                else:
-                    self.lastMessage = (f"Der er ikke flere kaniner tilbage i midten - slå igen! - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
+                    self.antalKaninerMidte -= 1
                 self.ekstraTur = True
 
             elif self.spiltype == "normal": # -> kanin = +1 point 
@@ -55,8 +62,7 @@ class spilInstans:
                     self.point[self.spiller] += 1
                     self.kaniner -= 1
                     self.lastMessage = (f"Spiller {self.spiller} har reddet en kanin: +1 point - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
-                else:
-                    self.lastMessage = (f"Der er ikke flere kaniner tilbage i midten - tur mistet - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
+                    self.antalKaninerMidte -= 1
 
             elif self.spiltype == "langsom": # -> kanin = returner kanin til hul
                 if self.point[self.spiller] > 0:
@@ -64,16 +70,15 @@ class spilInstans:
                     self.kaniner += 1
                     self.kaninRetur = True
                     self.lastMessage = (f"Spiller {self.spiller} har mistet en kanin til midten: -1 point - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
+                    self.antalKaninerMidte += 1
                 else:
                     self.lastMessage = (f"Spiller {self.spiller} har ingen kaniner at miste. Tur slut")
   
-
         elif self.huller[farve] == 0:
             if self.antalKaninerMidte >= 1:
                 self.huller[farve] = 1
-                self.lastMessage = (f"Det {farve} hul er frit, kanin er flyttet hertil")
-            else:
-                self.lastMessage = (f"Der er ikke flere kaniner tilbage i midten - tur mistet - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
+                self.lastMessage = (f"{farve.capitalize()} er tom, kanin er flyttet hertil")
+                self.antalKaninerMidte -= 1
 
         elif self.huller[farve] == 1:
             self.point[self.spiller] += 1
