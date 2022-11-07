@@ -15,7 +15,7 @@ Beklager rodet i filstrukturen, men jeg kunne ikke få relative stier til at vir
 For at køre spillet skal du bruge følgende moduler i Python:  
 - PySimpleGUI
 - Matplotlib
-- numpy  
+- NumPy  
   
 Modulerne kan installeres med terminal-kommandoen:
 ```
