@@ -1,10 +1,17 @@
 # 'Kanin Hop Hop' i Python
-Mit produkt til programmeringsworkshop med at lave brætspillet 'Kanin Hop Hop'  
-Beklager rodet, men jeg kunne ikke få relative stier til at virke, så billederne kunne åbnes. 
+<img src="http://www.papskubber.dk/images/5306.jpg" data-canonical-src="http://www.papskubber.dk/images/5306.jpg" width="350" height="350" />
 
-Spillet startes ved at køre main.py med Python
+Mit produkt til programmeringsworkshop hos Computerteknologi på Aalborg Universitet.  
+Opgaven lyder at programmere og simulere brætspillet 'Kanin Hop Hop' med mulihed for at lave Monte Carlo-simuleringer for at kunne beregne sandsynligheden for at en given spiller vinder.   
+  
+Beklager rodet i filstrukturen, men jeg kunne ikke få relative stier til at virke i koden, så billederne kunne åbnes fra en undermappe.  
 
-# Dependencies:
+## Instructions:
+1. Download repo og udpak hele .zip-filen
+2. Start spillet ved at køre main.py
+  
+---
+### Dependencies:
 For at køre spillet skal du bruge følgende moduler i Python:  
 - PySimpleGUI
 - Matplotlib
@@ -18,7 +25,7 @@ python -m pip install numpy
 
 
 
-# Copyright:  
+### Copyright:  
 Grafikken i mit spil er tilpasset fra de originale illustrationer fra brætspillet (spilleplade, kasse, manual etc.)  
 Alle rettigheder eller varemærker tilhører deres respektive indehavere.  
   
