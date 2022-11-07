@@ -2,7 +2,7 @@
 Mit produkt til programmeringsworkshop med at lave brætspillet 'Kanin Hop Hop'  
 Beklager rodet, men jeg kunne ikke få relative stier til at virke, så billederne kunne åbnes. 
 
-Spillet køres ved at køre main.py
+Spillet startes ved at køre main.py med Python
 
 # Dependencies:
 For at køre spillet skal du bruge følgende moduler i Python:  
