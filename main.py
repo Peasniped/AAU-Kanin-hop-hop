@@ -131,7 +131,7 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 					[sg.Text('Antal Spillere', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((2,8), 4, orientation = 'h', size=(45,20), key ='-antal-spillere-')],
 
-					[sg.Text('Antal Gennemspilninger', font=('Helvetica', 15), justification='left')],
+					[sg.Text('Antal Gennemspilninger (n)', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((100,5000), 500, orientation = 'h', size=(45,20), resolution=100, key ='-antal-gennemspil-')],
 					[sg.Text('Øvre grænseværdi for y-akse (yMax)', font=('Helvetica', 15), justification='left')],
 					[sg.Slider((10,100), 50, orientation = 'h', enable_events = True, size=(45,20), key ='-yMax-')],
@@ -140,10 +140,13 @@ layoutMenuMangeIndstillinger = [[sg.Text('Vælg dine indstillinger og tryk start
 
 					[sg.Text('')],
 					[sg.Button('Simuler spil!', key = '-knap-menumange-start-', button_color=('white', 'green')),],
-					[sg.ProgressBar(100, orientation = 'h', key = '-progress-bar-', size=(37,20), bar_color = ("green", "grey")),],]
+					[sg.ProgressBar(100, orientation = 'h', key = '-progress-bar-', size=(37,20), bar_color = ("green", "grey")),],
+					[sg.Text('Vindersandsynlighed ved n spil:', font=('Helvetica', 12, "bold"), justification='left')],
+					[sg.Text('', key='-besked-vindsans-', font=('Helvetica', 10, "bold"), justification='left')],]
 layoutMenuMangeGraf = [[sg.Canvas(key = '-graf-')],]
 
-layoutMenuMange = [[sg.Column(layoutMenuMangeIndstillinger),
+layoutMenuMange = [
+	[sg.Column(layoutMenuMangeIndstillinger),
      sg.VSeperator(),
      sg.Column(layoutMenuMangeGraf),]]
 
@@ -652,6 +655,21 @@ def menuMange_Vindue():
 			yMin = values['-yMin-']
 			grafdata = lavGraf(gennemspilninger,spillerantal,yMax,yMin,datap1,datap2,datap3,datap4,datap5,datap6,datap7,datap8)
 			guiFigur = tegnGraf(menuMange['-graf-'].TKCanvas, grafdata)
+
+			# Vindersandsynlighed:
+			datapxs = [datap1, datap2, datap3, datap4, datap5, datap6, datap7, datap8]
+			vindsans = []
+			vindsansStrs = []
+
+			for datapx in datapxs:
+				if datapx[-1] > 0:
+					vindsan = datapx[-1]
+					vindsans.append(vindsan.round(2))
+			for i in range(len(vindsans)):
+				vindsansStr = (f"Spiller {i+1}: " + str(vindsans[i]) + "%")
+				vindsansStrs.append(vindsansStr)
+
+			menuMange['-besked-vindsans-'].update(vindsansStrs)
 		
 		# Hvis grafen er lavet opdateres grafen med det samme når yMax eller yMin rettes
 		if event == '-yMax-' and startPressed == True:
