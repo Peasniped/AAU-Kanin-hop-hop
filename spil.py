@@ -9,7 +9,7 @@ class spilInstans:
         """
         Startindstillinger til en spilinstans
         """
-        self.kaniner = 20 # Hvor mange kaniner der skal være på spillepladen til at starte med
+        self.kaniner = 8 # Hvor mange kaniner der skal være på spillepladen til at starte med
         self.huller = {"rød":0, "gul":0, "grøn":0, "blå":0, "lilla":0}
         self.spiller = 1
         self.spillerantal = int(spillerantal)
@@ -82,7 +82,6 @@ class spilInstans:
             self.lastMessage = (f"Kaninen i {farve} er reddet - Spiller {self.spiller}: +1 point - Spiller {self.spiller} har nu {self.point[self.spiller]} point")
 
         if self.ekstraTur == False:
-            
             if self.spiller < self.spillerantal:
                 self.spiller += 1 
             else:
@@ -90,8 +89,13 @@ class spilInstans:
             self.hvisTurErDet = (f"Det er Spiller {self.spiller}s tur til at slå!")
         else:
             self.hvisTurErDet = (f"Det er Spiller {self.spiller}s tur til at slå igen!")
-
         self.turTæller += 1
+    
+    def getPoint(self):
+        pointTabel = []
+        for spiller in self.point:
+            pointTabel.append(self.point[spiller])
+        return pointTabel
 
     def getVinder(self):
         """

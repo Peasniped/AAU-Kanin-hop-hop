@@ -413,7 +413,7 @@ def spilEnkelt_Vindue(spiltype, spillerantal):
 			# Tryk på knappen "Til Scoreboard!"
 			if 310 < pos[0] < 490 and 350 < pos[1] < 390:
 				spilEnkelt.close()
-				scoreboard_Vindue(spillerantal, enkeltSpil.gemPoint())
+				scoreboard_Vindue(spillerantal, enkeltSpil.getPoint())
 				spilEnkeltOpen = False
 
 		if event == sg.WIN_CLOSED:
